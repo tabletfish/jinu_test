@@ -40,6 +40,36 @@ sudo docker run -d \
   roboflow/roboflow-inference-server-jetson-4.6.1:latest
 ```
 
+다운로드 끝나면 컨테이너가 백그라운드로 뜹니다. 확인:
+
+  sudo docker ps
+
+  보이면 OK.
+
+  로그 확인:
+
+  sudo docker logs -f inference-server
+
+  서버가 떠 있으면 보통 클라이언트 실행하면 됩니다.
+
+  cd ~/jinu_test
+  source .venv/bin/activate
+  python roboflow_jetson_docker_client.py --camera 0
+
+  다음부터는 다시 다운로드 안 합니다. 그냥:
+
+  sudo docker start inference-server
+
+  만 하면 됩니다.
+
+  중간에 실패했는지 확인하려면:
+
+  sudo docker ps -a
+  sudo docker images | grep roboflow
+
+
+
+  
 서버 확인:
 
 ```bash
