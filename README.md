@@ -1,31 +1,42 @@
-# Roboflow Jetson Nano Inference Test
+# Roboflow Jetson Nano Docker Inference
 
-Roboflow에서 학습한 모델 `my-first-project-ml6kp/2`를 Jetson Nano 카메라로 테스트하는 예제입니다.
+Roboflow에서 학습한 모델 `my-first-project-ml6kp/2`를 Jetson Nano에서 Docker Inference Server 방식으로 테스트하는 예제입니다.
 
-API key는 GitHub에 올리면 안 되므로 코드 실행 전에 `roboflow_jetson_camera.py`의 아래 값을 본인 키로 바꿔서 사용합니다.
+이 저장소는 Docker 서버 방식만 사용합니다. 직접 실행 방식의 `roboflow_jetson_camera.py`는 사용하지 않습니다.
+
+## API Key
+
+API key는 GitHub에 올리면 안 되므로 Jetson에서 `git pull` 받은 뒤 로컬 파일에만 넣습니다.
+
+`roboflow_jetson_docker_client.py`에서 아래 값을 본인 키로 바꿉니다.
 
 ```python
 ROBOFLOW_API_KEY = "YOUR_ROBOFLOW_API_KEY"
 ```
 
-## 1. Direct InferencePipeline 방식
+## 가상환경
 
-카메라 입력, Roboflow 모델 추론, 화면 표시를 Python 프로세스 하나에서 처리합니다.
-
-```bash
-cd /home/dydlz/jinu_test
-python3 roboflow_jetson_camera.py --camera 0
-```
-
-Jetson Nano에서 느리면 FPS를 낮춰서 실행합니다.
+Jetson 기본 OpenCV를 쓰기 위해 `--system-site-packages`를 붙여 가상환경을 만듭니다.
 
 ```bash
-python3 roboflow_jetson_camera.py --camera 0 --max-fps 5 --confidence 0.5
+cd ~/jinu_test
+python3 -m venv --system-site-packages .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install inference-sdk
 ```
 
-## 2. Docker Inference Server 방식
+확인:
 
-먼저 Jetson에서 Roboflow Inference Server를 Docker로 실행합니다.
+```bash
+which python
+python -c "import cv2; print(cv2.__version__, cv2.__file__)"
+python -c "from inference_sdk import InferenceHTTPClient; print('sdk ok')"
+```
+
+## Docker 서버 실행
+
+처음 한 번만 이미지를 다운로드하며 시간이 오래 걸릴 수 있습니다.
 
 ```bash
 sudo docker run -d \
@@ -40,70 +51,42 @@ sudo docker run -d \
   roboflow/roboflow-inference-server-jetson-4.6.1:latest
 ```
 
-다운로드 끝나면 컨테이너가 백그라운드로 뜹니다. 확인:
-
-  sudo docker ps
-
-  보이면 OK.
-
-  로그 확인:
-
-  sudo docker logs -f inference-server
-
-  서버가 떠 있으면 보통 클라이언트 실행하면 됩니다.
-
-  cd ~/jinu_test
-  source .venv/bin/activate
-  python roboflow_jetson_docker_client.py --camera 0
-
-  다음부터는 다시 다운로드 안 합니다. 그냥:
-
-  sudo docker start inference-server
-
-  만 하면 됩니다.
-
-  중간에 실패했는지 확인하려면:
-
-  sudo docker ps -a
-  sudo docker images | grep roboflow
-
-
-
-  
 서버 확인:
 
 ```bash
 sudo docker ps
+sudo docker logs -f inference-server
 ```
 
-그 다음 클라이언트를 실행합니다.
-
-```bash
-cd /home/dydlz/jinu_test
-python3 roboflow_jetson_docker_client.py --camera 0
-```
-
-화면 없이 로보카 제어용으로 돌릴 때:
-
-```bash
-python3 roboflow_jetson_docker_client.py --camera 0 --no-display --interval 0.1
-```
-
-Docker 서버 끄기:
-
-```bash
-sudo docker stop inference-server
-```
-
-다시 켜기:
+다음부터는 이미 받은 서버를 다시 켭니다.
 
 ```bash
 sudo docker start inference-server
 ```
 
+서버 끄기:
+
+```bash
+sudo docker stop inference-server
+```
+
+## 클라이언트 실행
+
+```bash
+cd ~/jinu_test
+source .venv/bin/activate
+python roboflow_jetson_docker_client.py --camera 0
+```
+
+화면 없이 로보카 제어용으로 돌릴 때:
+
+```bash
+python roboflow_jetson_docker_client.py --camera 0 --no-display --interval 0.1
+```
+
 ## Git 명령어
 
-원격 저장소에서 최신 코드 받아오기:
+최신 코드 받아오기:
 
 ```bash
 git pull origin main
@@ -124,7 +107,7 @@ git add .
 커밋 만들기:
 
 ```bash
-git commit -m "Update Roboflow Jetson examples"
+git commit -m "Update Roboflow Jetson Docker client"
 ```
 
 GitHub에 올리기:
