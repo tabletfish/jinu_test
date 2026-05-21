@@ -4,8 +4,6 @@ import time
 import cv2
 from inference_sdk import InferenceHTTPClient
 
-from roboflow_jetson_camera import MODEL_ID, ROBOFLOW_API_KEY
-
 
 # Method 2: Docker Inference Server client.
 #
@@ -54,6 +52,9 @@ from roboflow_jetson_camera import MODEL_ID, ROBOFLOW_API_KEY
 # Stop:
 #   Press Ctrl+C in the terminal.
 
+ROBOFLOW_API_KEY = "YOUR_ROBOFLOW_API_KEY"
+MODEL_ID = "my-first-project-ml6kp/2"
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -77,7 +78,7 @@ def parse_args():
     parser.add_argument(
         "--api-key",
         default=ROBOFLOW_API_KEY,
-        help="Roboflow API key imported from roboflow_jetson_camera.py.",
+        help="Roboflow API key. Defaults to the ROBOFLOW_API_KEY constant in this file.",
     )
     parser.add_argument(
         "--confidence",
@@ -156,7 +157,7 @@ def main():
 
     if not args.api_key:
         raise SystemExit(
-            "Missing Roboflow API key. Edit ROBOFLOW_API_KEY in roboflow_jetson_camera.py."
+            "Missing Roboflow API key. Edit ROBOFLOW_API_KEY at the top of this file."
         )
 
     client = InferenceHTTPClient(api_url=args.api_url, api_key=args.api_key)
