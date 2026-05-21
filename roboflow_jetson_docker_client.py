@@ -1,8 +1,9 @@
 import argparse
+import base64
 import time
 
 import cv2
-from inference_sdk import InferenceHTTPClient
+import requests
 
 
 # Method 2: Docker Inference Server client.
@@ -17,6 +18,8 @@ from inference_sdk import InferenceHTTPClient
 # - Frames are not being sent to a cloud server in this setup.
 # - OpenCV is used only to read camera frames and draw boxes.
 # - The actual model inference runs inside the Roboflow Docker server.
+# - This file uses requests directly instead of inference-sdk to avoid pulling
+#   supervision/scipy/numpy dependencies into the Jetson camera environment.
 # - There is still local HTTP request/response overhead, so latency may be higher
 #   than direct InferencePipeline execution.
 #
@@ -97,6 +100,12 @@ def parse_args():
         action="store_true",
         help="Disable OpenCV display window for headless robo-car runs.",
     )
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=10.0,
+        help="HTTP timeout in seconds for the local inference server.",
+    )
     return parser.parse_args()
 
 
@@ -111,6 +120,27 @@ def prediction_items(result):
     if isinstance(result, dict):
         return result.get("predictions", [])
     return []
+
+
+def infer_frame(frame, api_url, api_key, model_id, confidence, timeout):
+    ok, encoded = cv2.imencode(".jpg", frame)
+    if not ok:
+        raise RuntimeError("Failed to encode camera frame as JPEG.")
+
+    image_base64 = base64.b64encode(encoded).decode("utf-8")
+    url = f"{api_url.rstrip('/')}/{model_id}"
+    response = requests.post(
+        url,
+        params={
+            "api_key": api_key,
+            "confidence": confidence,
+        },
+        data=image_base64,
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    return response.json()
 
 
 def draw_predictions(frame, predictions, min_confidence):
@@ -160,7 +190,6 @@ def main():
             "Missing Roboflow API key. Edit ROBOFLOW_API_KEY at the top of this file."
         )
 
-    client = InferenceHTTPClient(api_url=args.api_url, api_key=args.api_key)
     cap = cv2.VideoCapture(camera_reference(args.camera))
 
     if not cap.isOpened():
@@ -173,7 +202,14 @@ def main():
                 print("Failed to read camera frame.")
                 break
 
-            result = client.infer(frame, model_id=args.model_id)
+            result = infer_frame(
+                frame=frame,
+                api_url=args.api_url,
+                api_key=args.api_key,
+                model_id=args.model_id,
+                confidence=args.confidence,
+                timeout=args.timeout,
+            )
             predictions = prediction_items(result)
             handle_robot_control(predictions)
 
